@@ -335,7 +335,7 @@ function Game1({ back, onScore }) {
           sub={`Du fant alle i ${subj.name}s familie${errors===0?" – helt perfekt! 🌟":` med ${errors} feil.`}`}
           btnLabel="Neste runde ›" onNext={newRound} color="#4f46e5" />
       ) : (
-        <div style={{ padding: "14px 12px 24px", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        <div style={{ padding: "14px 12px 24px", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
           {opts.map((m) => {
             const isFound = found.has(m.id);
             const isWrong = flash === m.id;
@@ -343,22 +343,27 @@ function Game1({ back, onScore }) {
               <button key={m.id} onClick={() => tap(m)} style={{
                 background: isFound?"#ede9fe":isWrong?"#fee2e2":"white",
                 border: `2.5px solid ${isFound?"#7c3aed":isWrong?"#dc2626":"#e2e8f0"}`,
-                borderRadius: 18, padding: "10px 4px 8px",
+                borderRadius: 16, padding: "6px 6px 8px",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
                 cursor: "pointer", transition: "all 0.2s",
                 boxShadow: isFound?"0 4px 16px rgba(124,58,237,0.2)":"0 2px 8px rgba(0,0,0,0.07)",
                 transform: isWrong?"scale(0.94)":"scale(1)",
+                overflow: "hidden",
               }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", overflow: "hidden",
-                  border: `2.5px solid ${isFound?"#7c3aed":isWrong?"#dc2626":"transparent"}`,
-                  background: m.color, display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                <div style={{
+                  width: "100%", aspectRatio: "1/1", borderRadius: 10,
+                  overflow: "hidden", flexShrink: 0,
+                  background: m.color,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  border: `2px solid ${isFound?"#7c3aed":isWrong?"#dc2626":"transparent"}`,
+                }}>
                   {PHOTOS[m.id]
                     ? <img src={PHOTOS[m.id]} style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top"}} />
-                    : <span style={{fontSize:15,fontWeight:900,color:"white"}}>{m.name.slice(0,2).toUpperCase()}</span>
+                    : <span style={{fontSize:20,fontWeight:900,color:"white"}}>{m.name.slice(0,2).toUpperCase()}</span>
                   }
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 800, color: isFound?"#5b21b6":isWrong?"#dc2626":"#334155", textAlign: "center" }}>{m.name}</div>
-                <div style={{ fontSize: 16, minHeight: 18 }}>{isFound?"✅":isWrong?"❌":""}</div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: isFound?"#5b21b6":isWrong?"#dc2626":"#334155", textAlign: "center", lineHeight: 1.2 }}>{m.name}</div>
+                <div style={{ fontSize: 14, minHeight: 16 }}>{isFound?"✅":isWrong?"❌":""}</div>
               </button>
             );
           })}
@@ -562,11 +567,11 @@ function Game3({ back, onScore }) {
                   {faceUp ? (
                     card.type==="avatar" ? (
                       <>
-                        <div style={{ width:40,height:40,borderRadius:"50%",overflow:"hidden",background:m.color,
+                        <div style={{ width:"80%",aspectRatio:"1/1",borderRadius:8,overflow:"hidden",background:m.color,
                           display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.2)",flexShrink:0 }}>
                           {PHOTOS[m.id]
                             ? <img src={PHOTOS[m.id]} style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top"}} />
-                            : <span style={{fontSize:14,fontWeight:900,color:"white"}}>{m.name.slice(0,2).toUpperCase()}</span>
+                            : <span style={{fontSize:16,fontWeight:900,color:"white"}}>{m.name.slice(0,2).toUpperCase()}</span>
                           }
                         </div>
                         {isMatched && <div style={{fontSize:14,marginTop:6}}>✅</div>}
