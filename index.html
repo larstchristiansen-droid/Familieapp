@@ -11,6 +11,7 @@
     body { background: #0f0c29; font-family: 'Nunito', sans-serif; }
     #root { max-width: 480px; margin: 0 auto; min-height: 100vh; }
     button { font-family: inherit; }
+    input { font-family: inherit; }
     @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
   </style>
 </head>
@@ -156,7 +157,7 @@ function Av({ m, size = 64, ring = null, showName = true }) {
 // ═══════════════════════════════════════════════════════════════
 // HOME SCREEN
 // ═══════════════════════════════════════════════════════════════
-function HomeScreen({ go, progress }) {
+function HomeScreen({ go, progress, currentUser, onSwitchUser }) {
   const total = [1, 2, 3].reduce((s, id) => s + progress[id].played, 0);
   const stars = [1, 2, 3].reduce((s, id) => s + progress[id].correct, 0);
 
@@ -173,6 +174,27 @@ function HomeScreen({ go, progress }) {
       padding: "28px 20px 40px",
       display: "flex", flexDirection: "column", alignItems: "center",
     }}>
+      {/* User header */}
+      <div style={{width:"100%",maxWidth:380,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{
+            width:38,height:38,borderRadius:"50%",
+            background:`hsl(${(currentUser.charCodeAt(0)*47)%360},60%,50%)`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:16,fontWeight:900,color:"white",flexShrink:0,
+          }}>{currentUser[0].toUpperCase()}</div>
+          <div>
+            <div style={{color:"rgba(255,255,255,0.55)",fontSize:11}}>Spiller nå</div>
+            <div style={{color:"white",fontSize:15,fontWeight:900}}>{currentUser}</div>
+          </div>
+        </div>
+        <button onClick={onSwitchUser} style={{
+          background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",
+          borderRadius:12,padding:"7px 14px",color:"rgba(255,255,255,0.7)",
+          fontSize:12,fontWeight:800,cursor:"pointer",
+        }}>Bytt spiller</button>
+      </div>
+
       <div style={{ marginBottom: 8, fontSize: 52 }}>🏠</div>
       <h1 style={{
         color: "white", fontSize: 30, fontWeight: 900, margin: "0 0 4px",
@@ -691,14 +713,308 @@ function Dashboard({ back, progress }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// STORAGE HELPERS
+// ═══════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'familiespillet_users';
+const emptyProgress = () => ({
+  1: {played:0,correct:0}, 2: {played:0,correct:0}, 3: {played:0,correct:0},
+  alphabet: Object.fromEntries(NOR_ALPHABET.map(l=>[l,false])),
+});
+const loadAllUsers = () => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+};
+const saveAllUsers = (data) => {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+};
+
+// ═══════════════════════════════════════════════════════════════
+// USER SELECT SCREEN
+// ═══════════════════════════════════════════════════════════════
+function UserSelect({ onSelect }) {
+  const [users, setUsers] = useState({});
+  const [newName, setNewName] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => { setUsers(loadAllUsers()); }, []);
+
+  const userList = Object.keys(users);
+
+  const selectUser = (name) => onSelect(name);
+
+  const addUser = () => {
+    const name = newName.trim();
+    if (!name) return;
+    const all = loadAllUsers();
+    if (!all[name]) all[name] = emptyProgress();
+    saveAllUsers(all);
+    onSelect(name);
+  };
+
+  return (
+    <div style={{
+      minHeight:"100vh",
+      background:"linear-gradient(160deg,#0f0c29 0%,#302b63 50%,#24243e 100%)",
+      display:"flex", flexDirection:"column", alignItems:"center",
+      padding:"48px 24px 40px",
+    }}>
+      <div style={{fontSize:64, marginBottom:12}}>👨‍👩‍👧‍👦</div>
+      <h1 style={{color:"white",fontSize:28,fontWeight:900,margin:"0 0 6px",textAlign:"center",textShadow:"0 2px 20px rgba(129,140,248,0.6)"}}>
+        Familiespillet
+      </h1>
+      <p style={{color:"rgba(255,255,255,0.5)",fontSize:14,margin:"0 0 36px",textAlign:"center"}}>
+        Hvem spiller nå?
+      </p>
+
+      <div style={{width:"100%",maxWidth:360,display:"flex",flexDirection:"column",gap:12}}>
+        {userList.map(name => (
+          <button key={name} onClick={() => selectUser(name)} style={{
+            background:"rgba(255,255,255,0.09)",
+            border:"1.5px solid rgba(255,255,255,0.18)",
+            borderRadius:20, padding:"16px 22px",
+            display:"flex", alignItems:"center", gap:14,
+            cursor:"pointer", textAlign:"left",
+            transition:"transform 0.15s",
+          }}
+          onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"}
+          onMouseLeave={e=>e.currentTarget.style.transform=""}>
+            <div style={{
+              width:44,height:44,borderRadius:"50%",
+              background:`hsl(${(name.charCodeAt(0)*47)%360},60%,50%)`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:18,fontWeight:900,color:"white",flexShrink:0,
+            }}>{name[0].toUpperCase()}</div>
+            <div style={{flex:1}}>
+              <div style={{color:"white",fontSize:18,fontWeight:900}}>{name}</div>
+              <div style={{color:"rgba(255,255,255,0.45)",fontSize:11,marginTop:1}}>
+                {(()=>{
+                  const p=users[name];
+                  const tot=[1,2,3].reduce((s,id)=>s+p[id].played,0);
+                  return tot===0?"Ikke spilt ennå":`${tot} runder spilt`;
+                })()}
+              </div>
+            </div>
+            <div style={{color:"rgba(255,255,255,0.4)",fontSize:22,fontWeight:900}}>›</div>
+          </button>
+        ))}
+
+        {!adding ? (
+          <button onClick={()=>setAdding(true)} style={{
+            background:"rgba(251,191,36,0.1)",
+            border:"1.5px dashed rgba(251,191,36,0.4)",
+            borderRadius:20, padding:"16px 22px",
+            display:"flex", alignItems:"center", gap:14,
+            cursor:"pointer",
+          }}>
+            <div style={{
+              width:44,height:44,borderRadius:"50%",
+              background:"rgba(251,191,36,0.15)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:22,flexShrink:0,
+            }}>＋</div>
+            <div style={{color:"#fbbf24",fontSize:16,fontWeight:800}}>
+              {userList.length===0 ? "Skriv inn ditt navn" : "Ny spiller"}
+            </div>
+          </button>
+        ) : (
+          <div style={{
+            background:"rgba(255,255,255,0.07)",
+            border:"1.5px solid rgba(251,191,36,0.5)",
+            borderRadius:20, padding:"18px 20px",
+            display:"flex", flexDirection:"column", gap:12,
+          }}>
+            <div style={{color:"#fbbf24",fontSize:13,fontWeight:800}}>Hva heter du?</div>
+            <input
+              autoFocus
+              value={newName}
+              onChange={e=>setNewName(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&addUser()}
+              placeholder="Skriv navn her..."
+              style={{
+                background:"rgba(255,255,255,0.1)",
+                border:"1.5px solid rgba(255,255,255,0.25)",
+                borderRadius:12, padding:"12px 16px",
+                color:"white", fontSize:18, fontWeight:800,
+                outline:"none", width:"100%",
+              }}
+            />
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>{setAdding(false);setNewName('');}} style={{
+                flex:1, background:"rgba(255,255,255,0.08)", border:"none",
+                borderRadius:12, padding:"12px", color:"rgba(255,255,255,0.6)",
+                fontSize:14, fontWeight:800, cursor:"pointer",
+              }}>Avbryt</button>
+              <button onClick={addUser} disabled={!newName.trim()} style={{
+                flex:2, background: newName.trim()?"#fbbf24":"rgba(251,191,36,0.2)",
+                border:"none", borderRadius:12, padding:"12px",
+                color: newName.trim()?"#1a1a2e":"rgba(255,255,255,0.3)",
+                fontSize:15, fontWeight:900, cursor: newName.trim()?"pointer":"default",
+              }}>Start spillet ›</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UPDATED DASHBOARD (multi-user)
+// ═══════════════════════════════════════════════════════════════
+function DashboardMulti({ back, progress, currentUser, allUsers }) {
+  const games = [
+    { id:1, label:"Hvem er i familien?", icon:"👨‍👩‍👧", color:"#4f46e5" },
+    { id:2, label:"Stav navnet!",         icon:"🔤",       color:"#0284c7" },
+    { id:3, label:"Memory",               icon:"🃏",       color:"#059669" },
+  ];
+  const totalPlayed  = [1,2,3].reduce((s,id)=>s+progress[id].played, 0);
+  const totalPerfect = [1,2,3].reduce((s,id)=>s+progress[id].correct, 0);
+  const learnedLetters = Object.entries(progress.alphabet).filter(([,v])=>v).map(([k])=>k);
+
+  const otherUsers = Object.entries(allUsers).filter(([name])=>name!==currentUser);
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#f8fafc", display:"flex", flexDirection:"column" }}>
+      <div style={{ background:"linear-gradient(160deg,#0f0c29,#302b63)", padding:"16px 20px 28px", borderRadius:"0 0 32px 32px" }}>
+        <BackBtn onBack={back} />
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <div style={{
+            width:44,height:44,borderRadius:"50%",flexShrink:0,
+            background:`hsl(${(currentUser.charCodeAt(0)*47)%360},60%,50%)`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:18,fontWeight:900,color:"white",
+          }}>{currentUser[0].toUpperCase()}</div>
+          <div>
+            <div style={{color:"rgba(255,255,255,0.6)",fontSize:12,fontWeight:700}}>Fremgang for</div>
+            <div style={{color:"white",fontSize:22,fontWeight:900}}>{currentUser} 📊</div>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:16 }}>
+          {[{val:totalPlayed,label:"runder"},{val:totalPerfect,label:"perfekte ⭐"},{val:learnedLetters.length,label:"bokstaver"}].map((s,i)=>(
+            <div key={i} style={{ flex:1,background:"rgba(255,255,255,0.08)",borderRadius:14,padding:"10px 8px",textAlign:"center" }}>
+              <div style={{color:"white",fontSize:22,fontWeight:900}}>{s.val}</div>
+              <div style={{color:"rgba(255,255,255,0.5)",fontSize:10,marginTop:1}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
+        {games.map(g=>{
+          const p=progress[g.id];
+          const pct=p.played===0?0:Math.round(p.correct/p.played*100);
+          const stars=pct>=80?3:pct>=50?2:pct>0?1:0;
+          return (
+            <div key={g.id} style={{ background:"white",borderRadius:20,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
+              <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:10 }}>
+                <span style={{fontSize:26}}>{g.icon}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:14,color:"#1a1a2e"}}>{g.label}</div>
+                  <div style={{fontSize:11,color:"#94a3b8",marginTop:1}}>{p.played} runder</div>
+                </div>
+                <div style={{fontSize:20,letterSpacing:-2}}>{"⭐".repeat(stars)}{"☆".repeat(3-stars)}</div>
+              </div>
+              <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct}%`,background:g.color,borderRadius:4,transition:"width 0.7s"}} />
+              </div>
+              <div style={{fontSize:11,color:"#94a3b8",marginTop:5,textAlign:"right"}}>
+                {p.played===0?"Ikke spilt ennå":`${pct}% uten feil`}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Best-of leaderboard */}
+        {otherUsers.length > 0 && (
+          <div style={{ background:"white",borderRadius:20,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div style={{fontWeight:900,fontSize:15,color:"#1a1a2e",marginBottom:14}}>🏆 Alle spillere</div>
+            {games.map(g => {
+              const allScores = Object.entries(allUsers).map(([name, p]) => ({
+                name,
+                pct: p[g.id].played===0 ? 0 : Math.round(p[g.id].correct/p[g.id].played*100),
+                played: p[g.id].played,
+              })).filter(s=>s.played>0).sort((a,b)=>b.pct-a.pct);
+              if (allScores.length === 0) return null;
+              return (
+                <div key={g.id} style={{marginBottom:16}}>
+                  <div style={{fontSize:12,fontWeight:800,color:"#64748b",marginBottom:8}}>
+                    {g.icon} {g.label}
+                  </div>
+                  {allScores.map((s,i) => (
+                    <div key={s.name} style={{
+                      display:"flex",alignItems:"center",gap:10,marginBottom:6,
+                      background:s.name===currentUser?"#ede9fe":"#f8fafc",
+                      borderRadius:12,padding:"8px 12px",
+                    }}>
+                      <div style={{fontSize:16,width:24,textAlign:"center",fontWeight:900,color:i===0?"#f59e0b":i===1?"#94a3b8":"#cd7c2f"}}>
+                        {i===0?"🥇":i===1?"🥈":"🥉"}
+                      </div>
+                      <div style={{
+                        width:30,height:30,borderRadius:"50%",flexShrink:0,
+                        background:`hsl(${(s.name.charCodeAt(0)*47)%360},60%,50%)`,
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:13,fontWeight:900,color:"white",
+                      }}>{s.name[0].toUpperCase()}</div>
+                      <div style={{flex:1,fontWeight:800,fontSize:13,color:"#1e293b"}}>{s.name}</div>
+                      <div style={{fontWeight:900,fontSize:14,color:g.color}}>{s.pct}%</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Alphabet */}
+        <div style={{ background:"white",borderRadius:20,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{fontWeight:900,fontSize:15,color:"#1a1a2e",marginBottom:4}}>Alfabetet</div>
+          <div style={{fontSize:11,color:"#94a3b8",marginBottom:14}}>Bokstaver øvd på i Stav navnet!</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {NOR_ALPHABET.map(l=>(
+              <div key={l} style={{
+                width:34,height:34,borderRadius:8,
+                background:progress.alphabet[l]?"#dbeafe":"#f1f5f9",
+                border:`2px solid ${progress.alphabet[l]?"#2563eb":"#e2e8f0"}`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:13,fontWeight:900,
+                color:progress.alphabet[l]?"#1d4ed8":"#cbd5e1",
+                transition:"all 0.3s",
+              }}>{l}</div>
+            ))}
+          </div>
+          <div style={{marginTop:10,fontSize:11,color:"#94a3b8"}}>{learnedLetters.length}/{NOR_ALPHABET.length} bokstaver</div>
+        </div>
+
+        {/* Family grid */}
+        <div style={{ background:"white",borderRadius:20,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)" }}>
+          <div style={{fontWeight:900,fontSize:15,color:"#1a1a2e",marginBottom:14}}>Storfamilien – {MEMBERS.length} personer</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
+            {MEMBERS.map(m=>(
+              <div key={m.id} style={{textAlign:"center",width:56}}>
+                <div style={{width:48,height:48,borderRadius:"50%",overflow:"hidden",background:m.color,margin:"0 auto",boxShadow:"0 2px 8px rgba(0,0,0,0.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {PHOTOS[m.id]
+                    ? <img src={PHOTOS[m.id]} style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top"}} />
+                    : <span style={{fontSize:14,fontWeight:900,color:"white"}}>{m.name.slice(0,2).toUpperCase()}</span>
+                  }
+                </div>
+                <div style={{fontSize:9,marginTop:3,color:"#64748b",fontWeight:700}}>{m.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // APP ROOT
 // ═══════════════════════════════════════════════════════════════
 function App() {
+  const [currentUser, setCurrentUser] = useState(null);
   const [screen, setScreen] = useState("home");
-  const [progress, setProgress] = useState({
-    1: {played:0,correct:0}, 2: {played:0,correct:0}, 3: {played:0,correct:0},
-    alphabet: Object.fromEntries(NOR_ALPHABET.map(l=>[l,false])),
-  });
+  const [progress, setProgress] = useState(emptyProgress());
+  const [allUsers, setAllUsers] = useState({});
 
   useEffect(()=>{
     const link=document.createElement("link");
@@ -706,6 +1022,16 @@ function App() {
     link.rel="stylesheet"; document.head.appendChild(link);
     return ()=>document.head.removeChild(link);
   },[]);
+
+  const selectUser = (name) => {
+    const all = loadAllUsers();
+    if (!all[name]) all[name] = emptyProgress();
+    saveAllUsers(all);
+    setCurrentUser(name);
+    setProgress(all[name]);
+    setAllUsers(all);
+    setScreen("home");
+  };
 
   const onScore = (gameId, errors, memberName) => {
     setProgress(prev => {
@@ -718,19 +1044,32 @@ function App() {
         memberName.toUpperCase().split("").forEach(l=>{ if(l in newAlpha) newAlpha[l]=true; });
         updated.alphabet=newAlpha;
       }
+      // Persist to localStorage
+      const all = loadAllUsers();
+      all[currentUser] = updated;
+      saveAllUsers(all);
+      setAllUsers({...all});
       return updated;
     });
   };
 
   const back = ()=>setScreen("home");
+
+  if (!currentUser) return (
+    <div style={{ fontFamily:"'Nunito',system-ui,-apple-system,sans-serif", maxWidth:480, margin:"0 auto", WebkitTapHighlightColor:"transparent" }}>
+      <style>{`* { box-sizing: border-box; } button { font-family: inherit; } input { font-family: inherit; }`}</style>
+      <UserSelect onSelect={selectUser} />
+    </div>
+  );
+
   return (
     <div style={{ fontFamily:"'Nunito',system-ui,-apple-system,sans-serif", maxWidth:480, margin:"0 auto", WebkitTapHighlightColor:"transparent" }}>
       <style>{`* { box-sizing: border-box; } button { font-family: inherit; } @keyframes bounce { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }`}</style>
-      {screen==="home" && <HomeScreen go={setScreen} progress={progress} />}
+      {screen==="home" && <HomeScreen go={setScreen} progress={progress} currentUser={currentUser} onSwitchUser={()=>setCurrentUser(null)} />}
       {screen===1      && <Game1 back={back} onScore={onScore} />}
       {screen===2      && <Game2 back={back} onScore={onScore} />}
       {screen===3      && <Game3 back={back} onScore={onScore} />}
-      {screen==="dash" && <Dashboard back={back} progress={progress} />}
+      {screen==="dash" && <DashboardMulti back={back} progress={progress} currentUser={currentUser} allUsers={allUsers} />}
     </div>
   );
 }
